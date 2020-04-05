@@ -161,7 +161,7 @@ impl<T: DataType> ColumnWriterImpl<T> {
         descr: ColumnDescPtr,
         props: WriterPropertiesPtr,
     ) -> Self {
-        let buf_ptr = Box::into_raw(Box::new(Vec::<u8>::new()));
+        let buf_ptr = Box::into_raw(Box::new(Vec::<u8>::with_capacity(16 * 1024 * 1024)));
         let cursor = Cursor::new(unsafe { &mut *buf_ptr });
         let page_writer = Box::new(crate::file::writer::SerializedPageWriter::new(cursor));
         let buf = unsafe { Box::from_raw(buf_ptr) };
