@@ -17,7 +17,12 @@
 
 //! Contains column writer API.
 
-use std::{cmp, collections::VecDeque, rc::Rc, io::{Write, Seek, Cursor, SeekFrom}};
+use std::{
+    cmp,
+    collections::VecDeque,
+    io::{Cursor, Seek, SeekFrom, Write},
+    rc::Rc,
+};
 
 use crate::basic::{Compression, Encoding, PageType, Type};
 use crate::column::page::{CompressedPage, Page, PageWriteSpec, PageWriter};
@@ -53,34 +58,27 @@ pub fn get_column_writer(
     props: WriterPropertiesPtr,
 ) -> ColumnWriter {
     match descr.physical_type() {
-        Type::BOOLEAN => ColumnWriter::BoolColumnWriter(ColumnWriterImpl::new(
-            descr,
-            props,
-        )),
-        Type::INT32 => ColumnWriter::Int32ColumnWriter(ColumnWriterImpl::new(
-            descr,
-            props,
-        )),
-        Type::INT64 => ColumnWriter::Int64ColumnWriter(ColumnWriterImpl::new(
-            descr,
-            props,
-        )),
-        Type::INT96 => ColumnWriter::Int96ColumnWriter(ColumnWriterImpl::new(
-            descr,
-            props,
-        )),
-        Type::FLOAT => ColumnWriter::FloatColumnWriter(ColumnWriterImpl::new(
-            descr,
-            props,
-        )),
-        Type::DOUBLE => ColumnWriter::DoubleColumnWriter(ColumnWriterImpl::new(
-            descr,
-            props,
-        )),
-        Type::BYTE_ARRAY => ColumnWriter::ByteArrayColumnWriter(ColumnWriterImpl::new(
-            descr,
-            props,
-        )),
+        Type::BOOLEAN => {
+            ColumnWriter::BoolColumnWriter(ColumnWriterImpl::new(descr, props))
+        }
+        Type::INT32 => {
+            ColumnWriter::Int32ColumnWriter(ColumnWriterImpl::new(descr, props))
+        }
+        Type::INT64 => {
+            ColumnWriter::Int64ColumnWriter(ColumnWriterImpl::new(descr, props))
+        }
+        Type::INT96 => {
+            ColumnWriter::Int96ColumnWriter(ColumnWriterImpl::new(descr, props))
+        }
+        Type::FLOAT => {
+            ColumnWriter::FloatColumnWriter(ColumnWriterImpl::new(descr, props))
+        }
+        Type::DOUBLE => {
+            ColumnWriter::DoubleColumnWriter(ColumnWriterImpl::new(descr, props))
+        }
+        Type::BYTE_ARRAY => {
+            ColumnWriter::ByteArrayColumnWriter(ColumnWriterImpl::new(descr, props))
+        }
         Type::FIXED_LEN_BYTE_ARRAY => ColumnWriter::FixedLenByteArrayColumnWriter(
             ColumnWriterImpl::new(descr, props),
         ),
@@ -157,13 +155,11 @@ pub struct ColumnWriterImpl<T: DataType> {
 }
 
 impl<T: DataType> ColumnWriterImpl<T> {
-    pub fn new(
-        descr: ColumnDescPtr,
-        props: WriterPropertiesPtr,
-    ) -> Self {
+    pub fn new(descr: ColumnDescPtr, props: WriterPropertiesPtr) -> Self {
         let buf_ptr = Box::into_raw(Box::new(Vec::<u8>::with_capacity(16 * 1024 * 1024)));
         let cursor = Cursor::new(unsafe { &mut *buf_ptr });
-        let page_writer = Box::new(crate::file::writer::SerializedPageWriter::new(cursor));
+        let page_writer =
+            Box::new(crate::file::writer::SerializedPageWriter::new(cursor));
         let buf = unsafe { Box::from_raw(buf_ptr) };
 
         let codec = props.compression(descr.path());
@@ -294,8 +290,9 @@ impl<T: DataType> ColumnWriterImpl<T> {
 
     /// Finalises writes and closes the column writer.
     /// Returns total bytes written, total rows written and column chunk metadata.
-    pub fn close<S>(mut self, sink: &mut S) -> Result<(u64, u64, ColumnChunkMetaData)> 
-    where S: Sized + Write + Seek
+    pub fn close<S>(mut self, sink: &mut S) -> Result<(u64, u64, ColumnChunkMetaData)>
+    where
+        S: Sized + Write + Seek,
     {
         if self.dict_encoder.is_some() {
             self.write_dictionary_page()?;
@@ -618,15 +615,16 @@ impl<T: DataType> ColumnWriterImpl<T> {
     }
 
     /// Assembles and writes column chunk metadata.
-    fn write_column_metadata(&mut self, sink_pos: u64) -> Result<ColumnChunkMetaData> 
-    {
-        // let sink_pos = sink.seek(SeekFrom::Current(0)).unwrap();
+    fn write_column_metadata(&mut self, sink_pos: u64) -> Result<ColumnChunkMetaData> {
         let total_compressed_size = self.total_compressed_size as i64;
         let total_uncompressed_size = self.total_uncompressed_size as i64;
         let num_values = self.total_num_values as i64;
         let dict_page_offset = self.dictionary_page_offset.map(|v| (v + sink_pos) as i64);
         // If data page offset is not set, then no pages have been written
-        let data_page_offset = self.data_page_offset.map(|v| (v + sink_pos) as i64).unwrap_or(0i64);
+        let data_page_offset = self
+            .data_page_offset
+            .map(|v| (v + sink_pos) as i64)
+            .unwrap_or(0i64);
 
         let file_offset;
         let mut encodings = Vec::new();
@@ -847,4 +845,929 @@ impl EncodingWriteSupport for ColumnWriterImpl<FixedLenByteArrayType> {
             WriterVersion::PARQUET_2_0 => true,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // use rand::distributions::uniform::SampleUniform;
+    //
+    // use crate::column::{
+    //     page::PageReader,
+    //     reader::{get_column_reader, get_typed_column_reader, ColumnReaderImpl},
+    // };
+    // use crate::file::{
+    //     properties::WriterProperties, reader::SerializedPageReader,
+    //     writer::SerializedPageWriter,
+    // };
+    // use crate::schema::types::{ColumnDescriptor, ColumnPath, Type as SchemaType};
+    // use crate::util::{
+    //     io::{FileSink, FileSource},
+    //     test_common::{get_temp_file, random_numbers_range},
+    // };
+
+    // use super::*;
+
+    #[test]
+    fn test_hello_world() {
+        println!("Hello World");
+    }
+
+    // #[test]
+    // fn test_column_writer_inconsistent_def_rep_length() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(WriterProperties::builder().build());
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 1, 1, props);
+    //     let res = writer.write_batch(&[1, 2, 3, 4], Some(&[1, 1, 1]), Some(&[0, 0]));
+    //     assert!(res.is_err());
+    //     if let Err(err) = res {
+    //         assert_eq!(
+    //             format!("{}", err),
+    //             "Parquet error: Inconsistent length of definition and repetition levels: 3 != 2"
+    //         );
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_invalid_def_levels() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(WriterProperties::builder().build());
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 1, 0, props);
+    //     let res = writer.write_batch(&[1, 2, 3, 4], None, None);
+    //     assert!(res.is_err());
+    //     if let Err(err) = res {
+    //         assert_eq!(
+    //             format!("{}", err),
+    //             "Parquet error: Definition levels are required, because max definition level = 1"
+    //         );
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_invalid_rep_levels() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(WriterProperties::builder().build());
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 0, 1, props);
+    //     let res = writer.write_batch(&[1, 2, 3, 4], None, None);
+    //     assert!(res.is_err());
+    //     if let Err(err) = res {
+    //         assert_eq!(
+    //             format!("{}", err),
+    //             "Parquet error: Repetition levels are required, because max repetition level = 1"
+    //         );
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_not_enough_values_to_write() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(WriterProperties::builder().build());
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 1, 0, props);
+    //     let res = writer.write_batch(&[1, 2], Some(&[1, 1, 1, 1]), None);
+    //     assert!(res.is_err());
+    //     if let Err(err) = res {
+    //         assert_eq!(
+    //             format!("{}", err),
+    //             "Parquet error: Expected to write 4 values, but have only 2"
+    //         );
+    //     }
+    // }
+    //
+    // #[test]
+    // #[should_panic(expected = "Dictionary offset is already set")]
+    // fn test_column_writer_write_only_one_dictionary_page() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(WriterProperties::builder().build());
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 0, 0, props);
+    //     writer.write_batch(&[1, 2, 3, 4], None, None).unwrap();
+    //     // First page should be correctly written.
+    //     let res = writer.write_dictionary_page();
+    //     assert!(res.is_ok());
+    //     writer.write_dictionary_page().unwrap();
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_error_when_writing_disabled_dictionary() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(
+    //         WriterProperties::builder()
+    //             .set_dictionary_enabled(false)
+    //             .build(),
+    //     );
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 0, 0, props);
+    //     writer.write_batch(&[1, 2, 3, 4], None, None).unwrap();
+    //     let res = writer.write_dictionary_page();
+    //     assert!(res.is_err());
+    //     if let Err(err) = res {
+    //         assert_eq!(
+    //             format!("{}", err),
+    //             "Parquet error: Dictionary encoder is not set"
+    //         );
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_boolean_type_does_not_support_dictionary() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(
+    //         WriterProperties::builder()
+    //             .set_dictionary_enabled(true)
+    //             .build(),
+    //     );
+    //     let mut writer = get_test_column_writer::<BoolType>(page_writer, 0, 0, props);
+    //     writer
+    //         .write_batch(&[true, false, true, false], None, None)
+    //         .unwrap();
+    //
+    //     let (bytes_written, rows_written, metadata) = writer.close().unwrap();
+    //     // PlainEncoder uses bit writer to write boolean values, which all fit into 1
+    //     // byte.
+    //     assert_eq!(bytes_written, 1);
+    //     assert_eq!(rows_written, 4);
+    //     assert_eq!(metadata.encodings(), &vec![Encoding::PLAIN, Encoding::RLE]);
+    //     assert_eq!(metadata.num_values(), 4); // just values
+    //     assert_eq!(metadata.dictionary_page_offset(), None);
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_bool() {
+    //     check_encoding_write_support::<BoolType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[true, false],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<BoolType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[true, false],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<BoolType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[true, false],
+    //         None,
+    //         &[Encoding::RLE, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<BoolType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[true, false],
+    //         None,
+    //         &[Encoding::RLE, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_int32() {
+    //     check_encoding_write_support::<Int32Type>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[1, 2],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int32Type>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[1, 2],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int32Type>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[1, 2],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int32Type>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[1, 2],
+    //         None,
+    //         &[Encoding::DELTA_BINARY_PACKED, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_int64() {
+    //     check_encoding_write_support::<Int64Type>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[1, 2],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int64Type>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[1, 2],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int64Type>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[1, 2],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int64Type>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[1, 2],
+    //         None,
+    //         &[Encoding::DELTA_BINARY_PACKED, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_int96() {
+    //     check_encoding_write_support::<Int96Type>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[Int96::from(vec![1, 2, 3])],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int96Type>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[Int96::from(vec![1, 2, 3])],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int96Type>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[Int96::from(vec![1, 2, 3])],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<Int96Type>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[Int96::from(vec![1, 2, 3])],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_float() {
+    //     check_encoding_write_support::<FloatType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[1.0, 2.0],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<FloatType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[1.0, 2.0],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<FloatType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[1.0, 2.0],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<FloatType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[1.0, 2.0],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_double() {
+    //     check_encoding_write_support::<DoubleType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[1.0, 2.0],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<DoubleType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[1.0, 2.0],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<DoubleType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[1.0, 2.0],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<DoubleType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[1.0, 2.0],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_byte_array() {
+    //     check_encoding_write_support::<ByteArrayType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[ByteArray::from(vec![1u8])],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<ByteArrayType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[ByteArray::from(vec![1u8])],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<ByteArrayType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[ByteArray::from(vec![1u8])],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<ByteArrayType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[ByteArray::from(vec![1u8])],
+    //         None,
+    //         &[Encoding::DELTA_BYTE_ARRAY, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_default_encoding_support_fixed_len_byte_array() {
+    //     check_encoding_write_support::<FixedLenByteArrayType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         true,
+    //         &[ByteArray::from(vec![1u8])],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<FixedLenByteArrayType>(
+    //         WriterVersion::PARQUET_1_0,
+    //         false,
+    //         &[ByteArray::from(vec![1u8])],
+    //         None,
+    //         &[Encoding::PLAIN, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<FixedLenByteArrayType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         true,
+    //         &[ByteArray::from(vec![1u8])],
+    //         Some(0),
+    //         &[Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE],
+    //     );
+    //     check_encoding_write_support::<FixedLenByteArrayType>(
+    //         WriterVersion::PARQUET_2_0,
+    //         false,
+    //         &[ByteArray::from(vec![1u8])],
+    //         None,
+    //         &[Encoding::DELTA_BYTE_ARRAY, Encoding::RLE],
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_check_metadata() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(WriterProperties::builder().build());
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 0, 0, props);
+    //     writer.write_batch(&[1, 2, 3, 4], None, None).unwrap();
+    //
+    //     let (bytes_written, rows_written, metadata) = writer.close().unwrap();
+    //     assert_eq!(bytes_written, 20);
+    //     assert_eq!(rows_written, 4);
+    //     assert_eq!(
+    //         metadata.encodings(),
+    //         &vec![Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE]
+    //     );
+    //     assert_eq!(metadata.num_values(), 8); // dictionary + value indexes
+    //     assert_eq!(metadata.compressed_size(), 20);
+    //     assert_eq!(metadata.uncompressed_size(), 20);
+    //     assert_eq!(metadata.data_page_offset(), 0);
+    //     assert_eq!(metadata.dictionary_page_offset(), Some(0));
+    //     if let Some(stats) = metadata.statistics() {
+    //         assert!(stats.has_min_max_set());
+    //         assert_eq!(stats.null_count(), 0);
+    //         assert_eq!(stats.distinct_count(), None);
+    //         if let Statistics::Int32(stats) = stats {
+    //             assert_eq!(stats.min(), &1);
+    //             assert_eq!(stats.max(), &4);
+    //         } else {
+    //             panic!("expecting Statistics::Int32");
+    //         }
+    //     } else {
+    //         panic!("metadata missing statistics");
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_precalculated_statistics() {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(WriterProperties::builder().build());
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 0, 0, props);
+    //     writer
+    //         .write_batch_with_statistics(
+    //             &[1, 2, 3, 4],
+    //             None,
+    //             None,
+    //             &Some(-17),
+    //             &Some(9000),
+    //             Some(21),
+    //             Some(55),
+    //         )
+    //         .unwrap();
+    //
+    //     let (bytes_written, rows_written, metadata) = writer.close().unwrap();
+    //     assert_eq!(bytes_written, 20);
+    //     assert_eq!(rows_written, 4);
+    //     assert_eq!(
+    //         metadata.encodings(),
+    //         &vec![Encoding::PLAIN, Encoding::RLE_DICTIONARY, Encoding::RLE]
+    //     );
+    //     assert_eq!(metadata.num_values(), 8); // dictionary + value indexes
+    //     assert_eq!(metadata.compressed_size(), 20);
+    //     assert_eq!(metadata.uncompressed_size(), 20);
+    //     assert_eq!(metadata.data_page_offset(), 0);
+    //     assert_eq!(metadata.dictionary_page_offset(), Some(0));
+    //     if let Some(stats) = metadata.statistics() {
+    //         assert!(stats.has_min_max_set());
+    //         assert_eq!(stats.null_count(), 21);
+    //         assert_eq!(stats.distinct_count().unwrap_or(0), 55);
+    //         if let Statistics::Int32(stats) = stats {
+    //             assert_eq!(stats.min(), &-17);
+    //             assert_eq!(stats.max(), &9000);
+    //         } else {
+    //             panic!("expecting Statistics::Int32");
+    //         }
+    //     } else {
+    //         panic!("metadata missing statistics");
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_empty_column_roundtrip() {
+    //     let props = WriterProperties::builder().build();
+    //     column_roundtrip::<Int32Type>("test_col_writer_rnd_1", props, &[], None, None);
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_non_nullable_values_roundtrip() {
+    //     let props = WriterProperties::builder().build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_col_writer_rnd_2",
+    //         props,
+    //         1024,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         0,
+    //         0,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_nullable_non_repeated_values_roundtrip() {
+    //     let props = WriterProperties::builder().build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_column_writer_nullable_non_repeated_values_roundtrip",
+    //         props,
+    //         1024,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         10,
+    //         0,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_nullable_repeated_values_roundtrip() {
+    //     let props = WriterProperties::builder().build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_col_writer_rnd_3",
+    //         props,
+    //         1024,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         10,
+    //         10,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_dictionary_fallback_small_data_page() {
+    //     let props = WriterProperties::builder()
+    //         .set_dictionary_pagesize_limit(32)
+    //         .set_data_pagesize_limit(32)
+    //         .build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_col_writer_rnd_4",
+    //         props,
+    //         1024,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         10,
+    //         10,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_small_write_batch_size() {
+    //     for i in &[1usize, 2, 5, 10, 11, 1023] {
+    //         let props = WriterProperties::builder().set_write_batch_size(*i).build();
+    //
+    //         column_roundtrip_random::<Int32Type>(
+    //             "test_col_writer_rnd_5",
+    //             props,
+    //             1024,
+    //             std::i32::MIN,
+    //             std::i32::MAX,
+    //             10,
+    //             10,
+    //         );
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_dictionary_disabled_v1() {
+    //     let props = WriterProperties::builder()
+    //         .set_writer_version(WriterVersion::PARQUET_1_0)
+    //         .set_dictionary_enabled(false)
+    //         .build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_col_writer_rnd_6",
+    //         props,
+    //         1024,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         10,
+    //         10,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_dictionary_disabled_v2() {
+    //     let props = WriterProperties::builder()
+    //         .set_writer_version(WriterVersion::PARQUET_2_0)
+    //         .set_dictionary_enabled(false)
+    //         .build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_col_writer_rnd_7",
+    //         props,
+    //         1024,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         10,
+    //         10,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_compression_v1() {
+    //     let props = WriterProperties::builder()
+    //         .set_writer_version(WriterVersion::PARQUET_1_0)
+    //         .set_compression(Compression::SNAPPY)
+    //         .build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_col_writer_rnd_8",
+    //         props,
+    //         2048,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         10,
+    //         10,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_compression_v2() {
+    //     let props = WriterProperties::builder()
+    //         .set_writer_version(WriterVersion::PARQUET_2_0)
+    //         .set_compression(Compression::SNAPPY)
+    //         .build();
+    //     column_roundtrip_random::<Int32Type>(
+    //         "test_col_writer_rnd_9",
+    //         props,
+    //         2048,
+    //         std::i32::MIN,
+    //         std::i32::MAX,
+    //         10,
+    //         10,
+    //     );
+    // }
+    //
+    // #[test]
+    // fn test_column_writer_add_data_pages_with_dict() {
+    //     // ARROW-5129: Test verifies that we add data page in case of dictionary encoding
+    //     // and no fallback occurred so far.
+    //     let file = get_temp_file("test_column_writer_add_data_pages_with_dict", &[]);
+    //     let sink = FileSink::new(&file);
+    //     let page_writer = Box::new(SerializedPageWriter::new(sink));
+    //     let props = Rc::new(
+    //         WriterProperties::builder()
+    //             .set_data_pagesize_limit(15) // actually each page will have size 15-18 bytes
+    //             .set_write_batch_size(3) // write 3 values at a time
+    //             .build(),
+    //     );
+    //     let data = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    //     let mut writer = get_test_column_writer::<Int32Type>(page_writer, 0, 0, props);
+    //     writer.write_batch(data, None, None).unwrap();
+    //     let (bytes_written, _, _) = writer.close().unwrap();
+    //
+    //     // Read pages and check the sequence
+    //     let source = FileSource::new(&file, 0, bytes_written as usize);
+    //     let mut page_reader = Box::new(
+    //         SerializedPageReader::new(
+    //             source,
+    //             data.len() as i64,
+    //             Compression::UNCOMPRESSED,
+    //             Int32Type::get_physical_type(),
+    //         )
+    //         .unwrap(),
+    //     );
+    //     let mut res = Vec::new();
+    //     while let Some(page) = page_reader.get_next_page().unwrap() {
+    //         res.push((page.page_type(), page.num_values()));
+    //     }
+    //     assert_eq!(
+    //         res,
+    //         vec![
+    //             (PageType::DICTIONARY_PAGE, 10),
+    //             (PageType::DATA_PAGE, 3),
+    //             (PageType::DATA_PAGE, 3),
+    //             (PageType::DATA_PAGE, 3),
+    //             (PageType::DATA_PAGE, 1)
+    //         ]
+    //     );
+    // }
+    //
+    // /// Performs write-read roundtrip with randomly generated values and levels.
+    // /// `max_size` is maximum number of values or levels (if `max_def_level` > 0) to write
+    // /// for a column.
+    // fn column_roundtrip_random<T: DataType>(
+    //     file_name: &str,
+    //     props: WriterProperties,
+    //     max_size: usize,
+    //     min_value: T::T,
+    //     max_value: T::T,
+    //     max_def_level: i16,
+    //     max_rep_level: i16,
+    // ) where
+    //     T::T: PartialOrd + SampleUniform + Copy,
+    // {
+    //     let mut num_values: usize = 0;
+    //
+    //     let mut buf: Vec<i16> = Vec::new();
+    //     let def_levels = if max_def_level > 0 {
+    //         random_numbers_range(max_size, 0, max_def_level + 1, &mut buf);
+    //         for &dl in &buf[..] {
+    //             if dl == max_def_level {
+    //                 num_values += 1;
+    //             }
+    //         }
+    //         Some(&buf[..])
+    //     } else {
+    //         num_values = max_size;
+    //         None
+    //     };
+    //
+    //     let mut buf: Vec<i16> = Vec::new();
+    //     let rep_levels = if max_rep_level > 0 {
+    //         random_numbers_range(max_size, 0, max_rep_level + 1, &mut buf);
+    //         Some(&buf[..])
+    //     } else {
+    //         None
+    //     };
+    //
+    //     let mut values: Vec<T::T> = Vec::new();
+    //     random_numbers_range(num_values, min_value, max_value, &mut values);
+    //
+    //     column_roundtrip::<T>(file_name, props, &values[..], def_levels, rep_levels);
+    // }
+    //
+    // /// Performs write-read roundtrip and asserts written values and levels.
+    // fn column_roundtrip<'a, T: DataType>(
+    //     file_name: &'a str,
+    //     props: WriterProperties,
+    //     values: &[T::T],
+    //     def_levels: Option<&[i16]>,
+    //     rep_levels: Option<&[i16]>,
+    // ) {
+    //     let file = get_temp_file(file_name, &[]);
+    //     let sink = FileSink::new(&file);
+    //     let page_writer = Box::new(SerializedPageWriter::new(sink));
+    //
+    //     let max_def_level = match def_levels {
+    //         Some(buf) => *buf.iter().max().unwrap_or(&0i16),
+    //         None => 0i16,
+    //     };
+    //
+    //     let max_rep_level = match rep_levels {
+    //         Some(buf) => *buf.iter().max().unwrap_or(&0i16),
+    //         None => 0i16,
+    //     };
+    //
+    //     let mut max_batch_size = values.len();
+    //     if let Some(levels) = def_levels {
+    //         max_batch_size = cmp::max(max_batch_size, levels.len());
+    //     }
+    //     if let Some(levels) = rep_levels {
+    //         max_batch_size = cmp::max(max_batch_size, levels.len());
+    //     }
+    //
+    //     let mut writer = get_test_column_writer::<T>(
+    //         page_writer,
+    //         max_def_level,
+    //         max_rep_level,
+    //         Rc::new(props),
+    //     );
+    //
+    //     let values_written = writer.write_batch(values, def_levels, rep_levels).unwrap();
+    //     assert_eq!(values_written, values.len());
+    //     let (bytes_written, rows_written, column_metadata) = writer.close().unwrap();
+    //
+    //     let source = FileSource::new(&file, 0, bytes_written as usize);
+    //     let page_reader = Box::new(
+    //         SerializedPageReader::new(
+    //             source,
+    //             column_metadata.num_values(),
+    //             column_metadata.compression(),
+    //             T::get_physical_type(),
+    //         )
+    //         .unwrap(),
+    //     );
+    //     let reader =
+    //         get_test_column_reader::<T>(page_reader, max_def_level, max_rep_level);
+    //
+    //     let mut actual_values = vec![T::T::default(); max_batch_size];
+    //     let mut actual_def_levels = def_levels.map(|_| vec![0i16; max_batch_size]);
+    //     let mut actual_rep_levels = rep_levels.map(|_| vec![0i16; max_batch_size]);
+    //
+    //     let (values_read, levels_read) = read_fully(
+    //         reader,
+    //         max_batch_size,
+    //         actual_def_levels.as_mut(),
+    //         actual_rep_levels.as_mut(),
+    //         actual_values.as_mut_slice(),
+    //     );
+    //
+    //     // Assert values, definition and repetition levels.
+    //
+    //     assert_eq!(&actual_values[..values_read], values);
+    //     match actual_def_levels {
+    //         Some(ref vec) => assert_eq!(Some(&vec[..levels_read]), def_levels),
+    //         None => assert_eq!(None, def_levels),
+    //     }
+    //     match actual_rep_levels {
+    //         Some(ref vec) => assert_eq!(Some(&vec[..levels_read]), rep_levels),
+    //         None => assert_eq!(None, rep_levels),
+    //     }
+    //
+    //     // Assert written rows.
+    //
+    //     if let Some(levels) = actual_rep_levels {
+    //         let mut actual_rows_written = 0;
+    //         for l in levels {
+    //             if l == 0 {
+    //                 actual_rows_written += 1;
+    //             }
+    //         }
+    //         assert_eq!(actual_rows_written, rows_written);
+    //     } else if actual_def_levels.is_some() {
+    //         assert_eq!(levels_read as u64, rows_written);
+    //     } else {
+    //         assert_eq!(values_read as u64, rows_written);
+    //     }
+    // }
+    //
+    // /// Performs write of provided values and returns column metadata of those values.
+    // /// Used to test encoding support for column writer.
+    // fn column_write_and_get_metadata<T: DataType>(
+    //     props: WriterProperties,
+    //     values: &[T::T],
+    // ) -> ColumnChunkMetaData {
+    //     let page_writer = get_test_page_writer();
+    //     let props = Rc::new(props);
+    //     let mut writer = get_test_column_writer::<T>(page_writer, 0, 0, props);
+    //     writer.write_batch(values, None, None).unwrap();
+    //     let (_, _, metadata) = writer.close().unwrap();
+    //     metadata
+    // }
+    //
+    // // Function to use in tests for EncodingWriteSupport. This checks that dictionary
+    // // offset and encodings to make sure that column writer uses provided by trait
+    // // encodings.
+    // fn check_encoding_write_support<T: DataType>(
+    //     version: WriterVersion,
+    //     dict_enabled: bool,
+    //     data: &[T::T],
+    //     dictionary_page_offset: Option<i64>,
+    //     encodings: &[Encoding],
+    // ) {
+    //     let props = WriterProperties::builder()
+    //         .set_writer_version(version)
+    //         .set_dictionary_enabled(dict_enabled)
+    //         .build();
+    //     let meta = column_write_and_get_metadata::<T>(props, data);
+    //     assert_eq!(meta.dictionary_page_offset(), dictionary_page_offset);
+    //     assert_eq!(meta.encodings(), &encodings);
+    // }
+    //
+    // /// Reads one batch of data, considering that batch is large enough to capture all of
+    // /// the values and levels.
+    // fn read_fully<T: DataType>(
+    //     mut reader: ColumnReaderImpl<T>,
+    //     batch_size: usize,
+    //     mut def_levels: Option<&mut Vec<i16>>,
+    //     mut rep_levels: Option<&mut Vec<i16>>,
+    //     values: &mut [T::T],
+    // ) -> (usize, usize) {
+    //     let actual_def_levels = def_levels.as_mut().map(|vec| &mut vec[..]);
+    //     let actual_rep_levels = rep_levels.as_mut().map(|vec| &mut vec[..]);
+    //     reader
+    //         .read_batch(batch_size, actual_def_levels, actual_rep_levels, values)
+    //         .unwrap()
+    // }
+    //
+    // /// Returns column writer.
+    // fn get_test_column_writer<T: DataType>(
+    //     page_writer: Box<PageWriter>,
+    //     max_def_level: i16,
+    //     max_rep_level: i16,
+    //     props: WriterPropertiesPtr,
+    // ) -> ColumnWriterImpl<T> {
+    //     let descr = Rc::new(get_test_column_descr::<T>(max_def_level, max_rep_level));
+    //     let column_writer = get_column_writer(descr, props, page_writer);
+    //     get_typed_column_writer::<T>(column_writer)
+    // }
+    //
+    // /// Returns column reader.
+    // fn get_test_column_reader<T: DataType>(
+    //     page_reader: Box<PageReader>,
+    //     max_def_level: i16,
+    //     max_rep_level: i16,
+    // ) -> ColumnReaderImpl<T> {
+    //     let descr = Rc::new(get_test_column_descr::<T>(max_def_level, max_rep_level));
+    //     let column_reader = get_column_reader(descr, page_reader);
+    //     get_typed_column_reader::<T>(column_reader)
+    // }
+    //
+    // /// Returns descriptor for primitive column.
+    // fn get_test_column_descr<T: DataType>(
+    //     max_def_level: i16,
+    //     max_rep_level: i16,
+    // ) -> ColumnDescriptor {
+    //     let path = ColumnPath::from("col");
+    //     let tpe = SchemaType::primitive_type_builder("col", T::get_physical_type())
+    //         // length is set for "encoding support" tests for FIXED_LEN_BYTE_ARRAY type,
+    //         // it should be no-op for other types
+    //         .with_length(1)
+    //         .build()
+    //         .unwrap();
+    //     ColumnDescriptor::new(Rc::new(tpe), None, max_def_level, max_rep_level, path)
+    // }
+    //
+    // /// Returns page writer that collects pages without serializing them.
+    // fn get_test_page_writer() -> Box<PageWriter> {
+    //     Box::new(TestPageWriter {})
+    // }
+    //
+    // struct TestPageWriter {}
+    //
+    // impl PageWriter for TestPageWriter {
+    //     fn write_page(&mut self, page: CompressedPage) -> Result<PageWriteSpec> {
+    //         let mut res = PageWriteSpec::new();
+    //         res.page_type = page.page_type();
+    //         res.uncompressed_size = page.uncompressed_size();
+    //         res.compressed_size = page.compressed_size();
+    //         res.num_values = page.num_values();
+    //         res.offset = 0;
+    //         res.bytes_written = page.data().len() as u64;
+    //         Ok(res)
+    //     }
+    //
+    //     fn write_metadata(&mut self, _metadata: &ColumnChunkMetaData) -> Result<()> {
+    //         Ok(())
+    //     }
+    //
+    //     fn close(&mut self) -> Result<()> {
+    //         Ok(())
+    //     }
+    // }
 }
